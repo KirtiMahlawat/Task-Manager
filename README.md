@@ -1,70 +1,135 @@
-# TaskFlow — Team Task Manager
+# TaskFlow
 
-A full-stack web application for managing projects, assigning tasks, and tracking team progress with role-based access control.
+### Team Task Manager — Full Stack Web Application
 
-## Live Demo
-> Deploy to Railway (see Deployment section below) and add your live URL here.
+A modern, production-ready project management tool where teams can create projects, assign tasks, track progress, and collaborate — all with role-based access control.
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Backend | Python · FastAPI · SQLAlchemy · MySQL |
-| Frontend | React 18 · TypeScript · Vite · Tailwind CSS |
-| Auth | JWT (python-jose) · bcrypt (passlib) |
-| Deployment | Railway |
-
-## Features
-
-- **Authentication** — Signup / Login with JWT tokens (7-day expiry)
-- **Projects** — Create, view, update, and delete projects
-- **Team Management** — Add members by email, assign roles (Admin / Member)
-- **Tasks** — Create tasks with title, description, status, priority, assignee, and due date
-- **Role-based Access**
-  - **Admin** — Full control: manage tasks, members, and project settings
-  - **Member** — View tasks and update task status
-- **Dashboard** — Overview of task stats, my assigned tasks, and recent activity
-- **Overdue Detection** — Tasks past their due date are highlighted in red
 
 ---
 
-## Local Development
+## Live Demo
+
+> Deployed on Railway — [Add your live URL here after deployment]
+
+---
+
+## Overview
+
+TaskFlow is a full-stack team collaboration tool built for managing real-world projects. It supports multi-user teams, granular role-based permissions, real-time dashboard stats, and overdue task detection — packaged into a clean, responsive UI.
+
+---
+
+## Features
+
+### Core Functionality
+
+| Feature | Description |
+|---------|-------------|
+| **Authentication** | JWT-based signup/login with 7-day token expiry |
+| **Projects** | Create, update, delete, and browse projects |
+| **Task Management** | Full CRUD with status, priority, assignee, and due date |
+| **Team Collaboration** | Invite members by email, assign roles |
+| **Dashboard** | Live stats: total tasks, in progress, done, overdue, projects |
+| **Overdue Detection** | Tasks past due date are automatically flagged |
+
+### Role-Based Access Control
+
+| Role | Permissions |
+|------|-------------|
+| **Owner** | Everything — including deleting the project and removing any member |
+| **Admin** | Create / edit / delete tasks · Manage member roles |
+| **Member** | View all tasks · Update task status only |
+
+---
+
+## Tech Stack
+
+### Backend
+- **Python 3.11+** with **FastAPI 0.115** — async REST API
+- **SQLAlchemy 2.0** — ORM with custom `GUID` type for MySQL UUID compatibility
+- **MySQL 8.0** via `mysql-connector-python`
+- **python-jose** — JWT token generation and verification
+- **passlib + bcrypt** — secure password hashing
+- **Pydantic v2** — request validation and response serialization
+- **python-dotenv** — environment variable management
+
+### Frontend
+- **React 18** with **TypeScript** — type-safe component architecture
+- **Vite 5** — lightning-fast dev server and production builds
+- **Tailwind CSS** — utility-first styling
+- **React Router v6** — client-side routing
+- **Axios** — HTTP client with automatic JWT injection
+- **Lucide React** — icon library
+- **date-fns** — date formatting utilities
+
+### Infrastructure
+- **Railway** — single-service deployment (backend serves built React SPA)
+- **Nixpacks** — zero-config build system
+- **CORS** — configured for seamless dev ↔ production switching
+
+---
+
+## Quick Start
 
 ### Prerequisites
+
 - Python 3.11+
 - Node.js 18+
-- MySQL 8.0+ (running locally)
+- MySQL 8.0+ running locally
 
-### 1. Clone and set up the backend
+### 1. Clone
+
+```bash
+git clone https://github.com/YOUR_USERNAME/team-task-manager.git
+cd team-task-manager
+```
+
+### 2. Backend Setup
 
 ```bash
 cd backend
+
+# Create and activate virtual environment
+python -m venv venv
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # macOS / Linux
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Configure environment
 cp .env.example .env
 ```
 
-Edit `backend/.env`:
-```
-DATABASE_URL=mysql+pymysql://root:yourpassword@localhost:3306/taskmanager
+Update `backend/.env` with your MySQL credentials:
+
+```env
+DATABASE_URL=mysql+mysqlconnector://root:yourpassword@localhost:3306/taskmanager
 JWT_SECRET=your-super-secret-key-change-this
 PORT=3000
 ENVIRONMENT=development
+FRONTEND_URL=http://localhost:5173
 ```
 
 Create the database:
-```bash
-mysql -u root -p -e "CREATE DATABASE taskmanager CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+```sql
+CREATE DATABASE IF NOT EXISTS taskmanager
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
 ```
 
-Start the backend (tables are auto-created on startup):
+Start the server — tables are auto-created on first run:
+
 ```bash
-cd backend
 python -m uvicorn main:app --reload --port 3000
 ```
 
-API docs available at: http://localhost:3000/api/docs
+Interactive API docs: **http://localhost:3000/api/docs**
 
-### 2. Set up the frontend
+### 3. Frontend Setup
+
+Open a new terminal:
 
 ```bash
 cd frontend
@@ -72,40 +137,7 @@ npm install
 npm run dev
 ```
 
-Frontend runs at: http://localhost:5173 (proxies `/api` calls to the backend)
-
----
-
-## Deployment on Railway
-
-### Step 1: Create a Railway project
-
-1. Go to [railway.app](https://railway.app) and sign in
-2. Click **New Project** → **Deploy from GitHub repo**
-3. Select this repository
-
-### Step 2: Add MySQL
-
-1. In your Railway project, click **+ New** → **Database** → **Add MySQL**
-2. Railway automatically sets the `DATABASE_URL` environment variable (format: `mysql://...`)
-3. The backend auto-converts it to `mysql+pymysql://...` on startup
-
-### Step 3: Set environment variables
-
-In Railway → your service → **Variables**, add:
-
-| Variable | Value |
-|----------|-------|
-| `JWT_SECRET` | A long random string (e.g. generate with `openssl rand -hex 32`) |
-| `ENVIRONMENT` | `production` |
-| `PORT` | `3000` |
-
-### Step 4: Deploy
-
-Railway will automatically use `railway.json` to:
-1. Install Python + Node.js dependencies
-2. Build the React frontend
-3. Start the FastAPI backend (which serves the built frontend as static files)
+App is live at **http://localhost:5173** — all `/api` requests proxy to the backend automatically.
 
 ---
 
@@ -113,69 +145,198 @@ Railway will automatically use `railway.json` to:
 
 ```
 team-task-manager/
+│
 ├── backend/
-│   ├── main.py                 # FastAPI app entry point
+│   ├── main.py                    # App entry point · table init · SPA serving
 │   ├── requirements.txt
 │   ├── .env.example
 │   └── app/
-│       ├── database.py         # SQLAlchemy engine + session
-│       ├── models.py           # ORM models (User, Project, Task, Member)
-│       ├── schemas.py          # Pydantic request/response schemas
-│       ├── auth.py             # JWT + bcrypt utilities
-│       ├── dependencies.py     # FastAPI dependency injection
+│       ├── database.py            # Engine · session · GUID TypeDecorator
+│       ├── models.py              # User · Project · ProjectMember · Task
+│       ├── schemas.py             # Pydantic schemas (request + response)
+│       ├── auth.py                # JWT utils · bcrypt hashing
+│       ├── dependencies.py        # get_current_user dependency
 │       └── routers/
-│           ├── auth.py         # POST /signup, /login · GET /me
-│           ├── projects.py     # Projects + members + project tasks
-│           ├── tasks.py        # Individual task CRUD
-│           ├── users.py        # User search
-│           └── dashboard.py    # Aggregated stats
+│           ├── auth.py            # /signup · /login · /me
+│           ├── projects.py        # Projects CRUD + member management
+│           ├── tasks.py           # Task CRUD
+│           ├── users.py           # User search
+│           └── dashboard.py       # Aggregated stats
+│
 ├── frontend/
 │   └── src/
-│       ├── pages/              # Login, Signup, Dashboard, Projects, ProjectDetail
-│       ├── components/         # Layout, Navbar, TaskCard, Modals
-│       ├── context/            # Auth context + hook
-│       ├── api/                # Axios client with JWT interceptor
-│       └── types/              # TypeScript interfaces
-├── railway.json                # Railway build + start config
-└── nixpacks.toml               # Nixpacks build phases
+│       ├── pages/
+│       │   ├── Login.tsx
+│       │   ├── Signup.tsx
+│       │   ├── Dashboard.tsx      # Stats · My Tasks · Recent Tasks
+│       │   ├── Projects.tsx       # Project list
+│       │   └── ProjectDetail.tsx  # Tasks board + members panel
+│       ├── components/
+│       │   ├── Layout.tsx
+│       │   ├── Navbar.tsx
+│       │   ├── TaskCard.tsx
+│       │   ├── CreateProjectModal.tsx
+│       │   ├── CreateTaskModal.tsx
+│       │   └── AddMemberModal.tsx
+│       ├── context/               # AuthContext · useAuth hook
+│       ├── api/                   # Axios instance with JWT interceptor
+│       └── types/                 # TypeScript interfaces
+│
+├── railway.json                   # Railway build + start configuration
+├── nixpacks.toml                  # Multi-phase build (Python + Node.js)
+└── .gitignore
 ```
-
-## API Reference
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/auth/signup` | Register new user | — |
-| POST | `/api/auth/login` | Login, get JWT token | — |
-| GET | `/api/auth/me` | Get current user | ✓ |
-| GET | `/api/projects/` | List user's projects | ✓ |
-| POST | `/api/projects/` | Create project | ✓ |
-| GET | `/api/projects/{id}` | Project detail + members | ✓ |
-| PUT | `/api/projects/{id}` | Update project | Admin |
-| DELETE | `/api/projects/{id}` | Delete project | Owner |
-| GET | `/api/projects/{id}/members` | List members | ✓ |
-| POST | `/api/projects/{id}/members` | Add member by email | Admin |
-| DELETE | `/api/projects/{id}/members/{uid}` | Remove member | Admin |
-| PUT | `/api/projects/{id}/members/{uid}` | Update member role | Admin |
-| GET | `/api/projects/{id}/tasks` | List project tasks | ✓ |
-| POST | `/api/projects/{id}/tasks` | Create task | Admin |
-| PUT | `/api/tasks/{id}` | Update task | Member |
-| DELETE | `/api/tasks/{id}` | Delete task | Admin |
-| GET | `/api/dashboard/` | Dashboard stats | ✓ |
-| GET | `/api/users/` | Search users | ✓ |
-
-Full interactive API docs: `/api/docs`
-
-## Environment Variables
-
-### Backend (`backend/.env`)
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | ✓ | PostgreSQL connection string |
-| `JWT_SECRET` | ✓ | Secret key for signing JWT tokens |
-| `PORT` | — | Server port (default: 3000) |
-| `ENVIRONMENT` | — | `development` or `production` |
 
 ---
 
-Made with FastAPI + React 
+## API Reference
+
+All endpoints are prefixed with `/api`. JWT token must be sent as `Authorization: Bearer <token>`.
+
+### Authentication
+
+| Method | Endpoint | Description | Protected |
+|--------|----------|-------------|-----------|
+| `POST` | `/auth/signup` | Register a new user | No |
+| `POST` | `/auth/login` | Login · returns JWT token | No |
+| `GET` | `/auth/me` | Get current user profile | Yes |
+
+### Projects
+
+| Method | Endpoint | Description | Role |
+|--------|----------|-------------|------|
+| `GET` | `/projects/` | List user's projects | Any |
+| `POST` | `/projects/` | Create a new project | Any |
+| `GET` | `/projects/{id}` | Project detail + members | Any |
+| `PUT` | `/projects/{id}` | Update name / description | Admin |
+| `DELETE` | `/projects/{id}` | Delete project | Owner |
+
+### Members
+
+| Method | Endpoint | Description | Role |
+|--------|----------|-------------|------|
+| `GET` | `/projects/{id}/members` | List members | Any |
+| `POST` | `/projects/{id}/members` | Add member by email | Admin |
+| `PUT` | `/projects/{id}/members/{uid}` | Change member role | Admin |
+| `DELETE` | `/projects/{id}/members/{uid}` | Remove member | Admin |
+
+### Tasks
+
+| Method | Endpoint | Description | Role |
+|--------|----------|-------------|------|
+| `GET` | `/projects/{id}/tasks` | List project tasks | Any |
+| `POST` | `/projects/{id}/tasks` | Create a task | Admin |
+| `PUT` | `/tasks/{id}` | Update task | Member+ |
+| `DELETE` | `/tasks/{id}` | Delete task | Admin |
+
+### Utilities
+
+| Method | Endpoint | Description | Protected |
+|--------|----------|-------------|-----------|
+| `GET` | `/dashboard/` | Aggregated stats | Yes |
+| `GET` | `/users/` | Search users by email | Yes |
+| `GET` | `/health` | Health check | No |
+
+> Full interactive docs with request/response examples: **`/api/docs`**
+
+---
+
+## Database Schema
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ users                                                   │
+│  id · name · email (unique) · password_hash · created_at│
+└───────────────────┬─────────────────────────────────────┘
+                    │ owner_id / user_id
+        ┌───────────▼────────────┐
+        │ projects               │
+        │  id · name · desc      │
+        │  owner_id · timestamps │
+        └──┬──────────────────┬──┘
+           │ project_id       │ project_id
+┌──────────▼──────┐   ┌───────▼──────────────────────────┐
+│ project_members │   │ tasks                             │
+│  id             │   │  id · title · description         │
+│  project_id     │   │  project_id · assignee_id         │
+│  user_id        │   │  created_by                       │
+│  role           │   │  status (todo|in_progress|done)   │
+│  joined_at      │   │  priority (low|medium|high)       │
+└─────────────────┘   │  due_date · timestamps            │
+                      └───────────────────────────────────┘
+```
+
+---
+
+## Deployment on Railway
+
+### Step 1 — Push to GitHub
+
+```bash
+git init
+git add .
+git commit -m "feat: initial TaskFlow implementation"
+git remote add origin https://github.com/YOUR_USERNAME/team-task-manager.git
+git branch -M main
+git push -u origin main
+```
+
+### Step 2 — Create Railway Project
+
+1. Go to [railway.app](https://railway.app) → sign in with GitHub
+2. **New Project** → **Deploy from GitHub repo** → select your repo
+3. Railway detects `railway.json` and starts the build automatically
+
+### Step 3 — Add MySQL Database
+
+1. In your Railway project → **+ New** → **Database** → **MySQL**
+2. `DATABASE_URL` is injected into your service automatically — no action needed
+
+### Step 4 — Set Environment Variables
+
+In Railway → your service → **Variables**:
+
+| Variable | Value |
+|----------|-------|
+| `JWT_SECRET` | Long random string — generate with `openssl rand -hex 32` |
+| `ENVIRONMENT` | `production` |
+| `PORT` | `3000` |
+
+### Step 5 — Generate Domain
+
+**Settings** → **Networking** → **Generate Domain** → copy your live URL.
+
+Update the **Live Demo** link at the top of this README.
+
+---
+
+## Environment Variables Reference
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DATABASE_URL` | Yes | — | `mysql+mysqlconnector://user:pass@host:port/db` |
+| `JWT_SECRET` | Yes | — | Secret key for signing JWT tokens |
+| `PORT` | No | `3000` | Server listening port |
+| `ENVIRONMENT` | No | `development` | `development` or `production` |
+| `FRONTEND_URL` | No | — | CORS allowed origin (dev only) |
+
+---
+
+## Available Scripts
+
+**Backend**
+```bash
+python -m uvicorn main:app --reload --port 3000   # development
+python -m uvicorn main:app --host 0.0.0.0 --port 3000  # production
+```
+
+**Frontend**
+```bash
+npm run dev      # development server (localhost:5173)
+npm run build    # production build → frontend/dist/
+npm run preview  # preview production build locally
+```
+
+---
+
+Built with FastAPI + React · Deployed on Railway
