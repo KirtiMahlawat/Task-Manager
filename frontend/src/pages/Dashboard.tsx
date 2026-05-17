@@ -1,0 +1,147 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { format, isPast } from 'date-fns'
+import { CheckSquare, Clock, AlertCircle, CheckCircle, FolderKanban, ListTodo, Calendar } from 'lucide-react'
+import api from '../api/client'
+import { useAuth } from '../context/AuthContext'
+import type { DashboardData, Task } from '../types'
+
+const STATUS_STYLES: Record<string, string> = {
+  todo: 'bg-gray-100 text-gray-700',
+  in_progress: 'bg-blue-100 text-blue-700',
+  done: 'bg-green-100 text-green-700',
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  todo: 'To Do',
+  in_progress: 'In Progress',
+  done: 'Done',
+}
+
+const PRIORITY_STYLES: Record<string, string> = {
+  low: 'bg-green-100 text-green-700',
+  medium: 'bg-yellow-100 text-yellow-700',
+  high: 'bg-red-100 text-red-700',
+}
+
+function TaskRow({ task }: { task: Task }) {
+  const isOverdue = task.due_date && isPast(new Date(task.due_date)) && task.status !== 'done'
+  return (
+    <div className="flex items-start justify-between py-3 border-b border-gray-50 last:border-0 gap-3">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 truncate">{task.title}</p>
+        <div className="flex items-center gap-2 mt-1">
+          {task.project && (
+            <Link to={`/projects/${task.project.id}`} className="text-xs text-indigo-600 hover:underline">
+              {task.project.name}
+            </Link>
+          )}
+          {task.due_date && (
+            <span className={`flex items-center gap-0.5 text-xs ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+              <Calendar className="h-3 w-3" />
+              {format(new Date(task.due_date), 'MMM d')}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PRIORITY_STYLES[task.priority]}`}>
+          {task.priority}
+        </span>
+        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[task.status]}`}>
+          {STATUS_LABELS[task.status]}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+export default function Dashboard() {
+  const { user } = useAuth()
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/dashboard/').then((res) => setData(res.data)).finally(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      </div>
+    )
+  }
+
+  const stats = [
+    { label: 'Total Tasks', value: data?.total_tasks ?? 0, icon: CheckSquare, color: 'text-gray-600', bg: 'bg-gray-50' },
+    { label: 'To Do', value: data?.todo_count ?? 0, icon: ListTodo, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+    { label: 'In Progress', value: data?.in_progress_count ?? 0, icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Done', value: data?.done_count ?? 0, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+    { label: 'Overdue', value: data?.overdue_count ?? 0, icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
+    { label: 'Projects', value: data?.projects_count ?? 0, icon: FolderKanban, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  ]
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Welcome back, {user?.name?.split(' ')[0]} 👋
+        </h1>
+        <p className="text-gray-500 mt-1">Here's an overview of your work</p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        {stats.map((stat) => (
+          <div key={stat.label} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+            <div className={`inline-flex items-center justify-center w-9 h-9 rounded-lg ${stat.bg} mb-3`}>
+              <stat.icon className={`h-5 w-5 ${stat.color}`} />
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+            <div className="text-xs text-gray-500 mt-0.5">{stat.label}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* My Tasks */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
+            <h2 className="font-semibold text-gray-900">My Tasks</h2>
+            <Link to="/projects" className="text-xs text-indigo-600 hover:underline">
+              View projects →
+            </Link>
+          </div>
+          <div className="px-6 py-2">
+            {data?.my_tasks.length === 0 ? (
+              <div className="text-center py-8">
+                <CheckCircle className="h-10 w-10 text-green-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">No pending tasks assigned to you</p>
+              </div>
+            ) : (
+              data?.my_tasks.map((task) => <TaskRow key={task.id} task={task} />)
+            )}
+          </div>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-50">
+            <h2 className="font-semibold text-gray-900">Recent Tasks</h2>
+          </div>
+          <div className="px-6 py-2">
+            {data?.recent_tasks.length === 0 ? (
+              <div className="text-center py-8">
+                <ListTodo className="h-10 w-10 text-gray-200 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">No tasks yet. Create a project to get started.</p>
+              </div>
+            ) : (
+              data?.recent_tasks.map((task) => <TaskRow key={task.id} task={task} />)
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
