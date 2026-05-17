@@ -4,7 +4,7 @@ nixPkgs = ["nodejs_20", "python311"]
 [phases.install]
 cmds = [
   "pip install -r backend/requirements.txt",
-  "npm install --prefix frontend"
+  "npm install --prefix frontend --include=dev"
 ]
 
 [phases.build]
