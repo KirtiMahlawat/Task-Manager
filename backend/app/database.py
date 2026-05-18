@@ -6,14 +6,15 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 DATABASE_URL = (
     os.getenv("DATABASE_URL")
     or os.getenv("MYSQL_URL")
-    or "mysql+mysqlconnector://root:1800@localhost/taskmanager"
+    or "sqlite:///./taskmanager.db"
 )
 
 # Normalize bare mysql:// scheme (e.g. from Railway)
 if DATABASE_URL.startswith("mysql://"):
     DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+mysqlconnector://", 1)
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+engine = create_engine(DATABASE_URL, pool_pre_ping=True, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
