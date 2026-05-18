@@ -53,6 +53,9 @@ def get_dashboard(
             func.count(models.Task.id).filter(
                 and_(models.Task.due_date < now, models.Task.status != "done")
             ).label("overdue"),
+            func.count(models.Task.id).filter(models.Task.priority == "low").label("low"),
+            func.count(models.Task.id).filter(models.Task.priority == "medium").label("medium"),
+            func.count(models.Task.id).filter(models.Task.priority == "high").label("high"),
         ).filter(models.Task.project_id.in_(project_ids)).one()
 
         total_tasks = stats.total or 0
@@ -60,8 +63,12 @@ def get_dashboard(
         in_progress_count = stats.in_progress or 0
         done_count = stats.done or 0
         overdue_count = stats.overdue or 0
+        low_count = stats.low or 0
+        medium_count = stats.medium or 0
+        high_count = stats.high or 0
     else:
         total_tasks = todo_count = in_progress_count = done_count = overdue_count = 0
+        low_count = medium_count = high_count = 0
 
     # MySQL doesn't support NULLS LAST; use CASE to push NULLs to end
     null_last = case((models.Task.due_date == None, 1), else_=0)
@@ -101,6 +108,9 @@ def get_dashboard(
         "done_count": done_count,
         "overdue_count": overdue_count,
         "projects_count": projects_count,
+        "low_count": low_count,
+        "medium_count": medium_count,
+        "high_count": high_count,
         "my_tasks": [_task_to_dict(t) for t in my_tasks_orm],
         "recent_tasks": [_task_to_dict(t) for t in recent_tasks_orm],
     }

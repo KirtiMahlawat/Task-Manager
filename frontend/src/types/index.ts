@@ -51,6 +51,9 @@ export interface DashboardData {
   done_count: number
   overdue_count: number
   projects_count: number
+  low_count: number
+  medium_count: number
+  high_count: number
   my_tasks: Task[]
   recent_tasks: Task[]
 }

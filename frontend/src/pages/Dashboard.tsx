@@ -2,12 +2,16 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { format, isPast } from 'date-fns'
 import { CheckSquare, Clock, AlertCircle, CheckCircle, FolderKanban, ListTodo, Calendar } from 'lucide-react'
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, Legend,
+} from 'recharts'
 import api from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import type { DashboardData, Task } from '../types'
 
 const STATUS_STYLES: Record<string, string> = {
-  todo: 'bg-gray-100 text-gray-700',
+  todo: 'bg-yellow-100 text-yellow-700',
   in_progress: 'bg-blue-100 text-blue-700',
   done: 'bg-green-100 text-green-700',
 }
@@ -24,13 +28,59 @@ const PRIORITY_STYLES: Record<string, string> = {
   high: 'bg-red-100 text-red-700',
 }
 
-function TaskRow({ task }: { task: Task }) {
+const STATUS_COLORS = ['#EAB308', '#3B82F6', '#22C55E']
+const PRIORITY_COLORS = ['#22C55E', '#EAB308', '#EF4444']
+
+function StatusSelect({
+  task,
+  onChange,
+}: {
+  task: Task
+  onChange: (id: string, status: string) => Promise<void>
+}) {
+  const [busy, setBusy] = useState(false)
+
+  const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setBusy(true)
+    try {
+      await onChange(task.id, e.target.value)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <select
+      value={task.status}
+      onChange={handleChange}
+      disabled={busy}
+      className={`text-xs px-2 py-0.5 rounded-full font-medium border-0 cursor-pointer
+        focus:outline-none focus:ring-2 focus:ring-indigo-300 appearance-none
+        ${STATUS_STYLES[task.status]} ${busy ? 'opacity-50' : 'hover:opacity-80'}`}
+    >
+      <option value="todo">To Do</option>
+      <option value="in_progress">In Progress</option>
+      <option value="done">Done</option>
+    </select>
+  )
+}
+
+function TaskRow({
+  task,
+  interactive = false,
+  onStatusChange,
+}: {
+  task: Task
+  interactive?: boolean
+  onStatusChange?: (id: string, status: string) => Promise<void>
+}) {
   const isOverdue = task.due_date && isPast(new Date(task.due_date)) && task.status !== 'done'
+
   return (
     <div className="flex items-start justify-between py-3 border-b border-gray-50 last:border-0 gap-3">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-900 truncate">{task.title}</p>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
           {task.project && (
             <Link to={`/projects/${task.project.id}`} className="text-xs text-indigo-600 hover:underline">
               {task.project.name}
@@ -40,6 +90,7 @@ function TaskRow({ task }: { task: Task }) {
             <span className={`flex items-center gap-0.5 text-xs ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
               <Calendar className="h-3 w-3" />
               {format(new Date(task.due_date), 'MMM d')}
+              {isOverdue && ' · overdue'}
             </span>
           )}
         </div>
@@ -48,9 +99,13 @@ function TaskRow({ task }: { task: Task }) {
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PRIORITY_STYLES[task.priority]}`}>
           {task.priority}
         </span>
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[task.status]}`}>
-          {STATUS_LABELS[task.status]}
-        </span>
+        {interactive && onStatusChange ? (
+          <StatusSelect task={task} onChange={onStatusChange} />
+        ) : (
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[task.status]}`}>
+            {STATUS_LABELS[task.status]}
+          </span>
+        )}
       </div>
     </div>
   )
@@ -61,9 +116,19 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const fetchDashboard = async () => {
+    const res = await api.get('/dashboard/')
+    setData(res.data)
+  }
+
   useEffect(() => {
-    api.get('/dashboard/').then((res) => setData(res.data)).finally(() => setLoading(false))
+    fetchDashboard().finally(() => setLoading(false))
   }, [])
+
+  const handleStatusChange = async (taskId: string, status: string) => {
+    await api.put(`/tasks/${taskId}`, { status })
+    await fetchDashboard()
+  }
 
   if (loading) {
     return (
@@ -72,6 +137,21 @@ export default function Dashboard() {
       </div>
     )
   }
+
+  const completionPct =
+    data && data.total_tasks > 0 ? Math.round((data.done_count / data.total_tasks) * 100) : 0
+
+  const statusChartData = [
+    { name: 'To Do', value: data?.todo_count ?? 0 },
+    { name: 'In Progress', value: data?.in_progress_count ?? 0 },
+    { name: 'Done', value: data?.done_count ?? 0 },
+  ]
+
+  const priorityChartData = [
+    { name: 'Low', value: data?.low_count ?? 0 },
+    { name: 'Medium', value: data?.medium_count ?? 0 },
+    { name: 'High', value: data?.high_count ?? 0 },
+  ]
 
   const stats = [
     { label: 'Total Tasks', value: data?.total_tasks ?? 0, icon: CheckSquare, color: 'text-gray-600', bg: 'bg-gray-50' },
@@ -84,17 +164,37 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          Welcome back, {user?.name?.split(' ')[0]} 👋
-        </h1>
-        <p className="text-gray-500 mt-1">Here's an overview of your work</p>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Welcome back, {user?.name?.split(' ')[0]} 👋
+          </h1>
+          <p className="text-gray-500 mt-1">Here's an overview of your work</p>
+        </div>
+        {data && data.total_tasks > 0 && (
+          <div className="text-right hidden sm:block shrink-0">
+            <p className="text-xs text-gray-500 mb-1">Overall completion</p>
+            <div className="flex items-center gap-2">
+              <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-green-500 rounded-full transition-all duration-700"
+                  style={{ width: `${completionPct}%` }}
+                />
+              </div>
+              <span className="text-sm font-semibold text-green-600">{completionPct}%</span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Stats */}
+      {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {stats.map((stat) => (
-          <div key={stat.label} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div
+            key={stat.label}
+            className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow"
+          >
             <div className={`inline-flex items-center justify-center w-9 h-9 rounded-lg ${stat.bg} mb-3`}>
               <stat.icon className={`h-5 w-5 ${stat.color}`} />
             </div>
@@ -104,11 +204,59 @@ export default function Dashboard() {
         ))}
       </div>
 
+      {/* Charts — only shown when there are tasks */}
+      {data && data.total_tasks > 0 && (
+        <div className="grid lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+            <h2 className="font-semibold text-gray-900 mb-4">Task Status Distribution</h2>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={statusChartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={88}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {statusChartData.map((_, i) => (
+                    <Cell key={i} fill={STATUS_COLORS[i]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v: number) => [v, 'Tasks']} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+            <h2 className="font-semibold text-gray-900 mb-4">Tasks by Priority</h2>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={priorityChartData} barSize={52}>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(v: number) => [v, 'Tasks']} cursor={{ fill: '#f3f4f6' }} />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                  {priorityChartData.map((_, i) => (
+                    <Cell key={i} fill={PRIORITY_COLORS[i]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Task lists */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* My Tasks */}
+        {/* My Tasks — interactive status dropdown */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
-            <h2 className="font-semibold text-gray-900">My Tasks</h2>
+            <div>
+              <h2 className="font-semibold text-gray-900">My Tasks</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Click a status badge to update</p>
+            </div>
             <Link to="/projects" className="text-xs text-indigo-600 hover:underline">
               View projects →
             </Link>
@@ -120,12 +268,14 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-400">No pending tasks assigned to you</p>
               </div>
             ) : (
-              data?.my_tasks.map((task) => <TaskRow key={task.id} task={task} />)
+              data?.my_tasks.map((task) => (
+                <TaskRow key={task.id} task={task} interactive onStatusChange={handleStatusChange} />
+              ))
             )}
           </div>
         </div>
 
-        {/* Recent Activity */}
+        {/* Recent Tasks */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
           <div className="px-6 py-4 border-b border-gray-50">
             <h2 className="font-semibold text-gray-900">Recent Tasks</h2>

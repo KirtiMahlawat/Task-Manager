@@ -155,5 +155,8 @@ class DashboardOut(BaseModel):
     done_count: int
     overdue_count: int
     projects_count: int
+    low_count: int
+    medium_count: int
+    high_count: int
     my_tasks: list[TaskOut]
     recent_tasks: list[TaskOut]
